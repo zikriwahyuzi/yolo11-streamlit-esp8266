@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # YOLOv11 Object Detection Streamlit App
 This repository contains a Streamlit web application for object detection using the YOLOv11n model. This application allows users to perform real-time object detection directly from their device's camera. Simply open the app and point your camera at the objects you want to detect to see instant results.
 
@@ -22,3 +23,7 @@ This repository contains a Streamlit web application for object detection using 
 **Note:**
 'Camera Permissions'
 You may need to grant camera permissions to the app when you run it for the first time.
+=======
+# yolo11-streamlit-esp8266
+yolo11-streamlit-esp8266
+>>>>>>> 36c7869dc64023c09e7ce3756abc08ecd3eba45a
