@@ -1,10 +1,7 @@
 import cv2
 import streamlit as st
-import numpy as np
-from PIL import Image
 from ultralytics import YOLO
-from collections import Counter
-import requests  # Library untuk mengirim HTTP request
+import requests
 
 # Load YOLO model
 @st.cache_resource
@@ -13,95 +10,97 @@ def load_model(model_path):
 
 # Fungsi untuk mengirim sinyal ke NodeMCU
 def send_to_nodemcu(action):
-    url = f"http://192.168.148.41/{action}"  # Ganti <IP_NodeMCU> dengan IP NodeMCU Anda
+    url = f"http://192.168.148.41/{action}"  # Ganti dengan IP NodeMCU Anda
     try:
-        requests.get(url)
-    except Exception as e:
+        requests.get(url, timeout=3)  # Timeout diatur menjadi 3 detik
+    except requests.exceptions.RequestException as e:
         st.error(f"Error connecting to NodeMCU: {e}")
 
-# Process and display the detection results (Deteksi semua objek, tapi kontrol lampu hanya untuk "person")
-def display_results(image, results):
-    boxes = results.boxes.xyxy.cpu().numpy()  # [x1, y1, x2, y2]
-    scores = results.boxes.conf.cpu().numpy()  # Confidence scores
-    labels = results.boxes.cls.cpu().numpy()  # Class indices
-    names = results.names  # Class names
+# Proses hasil deteksi (hanya untuk "person")
+def detect_person(image, results):
+    boxes = results.boxes.xyxy.cpu().numpy()
+    scores = results.boxes.conf.cpu().numpy()
+    labels = results.boxes.cls.cpu().numpy()
+    names = results.names
     
+    person_detected = False
     detected_objects = []
-    person_detected = False  # Menandai apakah "person" terdeteksi
 
     for i in range(len(boxes)):
-        if scores[i] > 0.5:  # Confidence threshold
-            x1, y1, x2, y2 = boxes[i].astype(int)
+        if scores[i] > 0.3:  # Confidence threshold
             label = names[int(labels[i])]
-            score = scores[i]
-            detected_objects.append(label)
-            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(image, f"{label}: {score:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-            if label == "person":  # Cek apakah "person" terdeteksi
+            if label == "person":  # Fokus hanya pada "person"
+                x1, y1, x2, y2 = boxes[i].astype(int)
+                detected_objects.append(label)
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(image, f"{label}: {scores[i]:.2f}", (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 person_detected = True
     
     return image, detected_objects, person_detected
 
-# Main Streamlit app
+# Aplikasi Streamlit
 def main():
     st.title("YOLOv11 Object Detection x IoT")
     st.sidebar.title("Settings")
     
-    model_path = "yolo11n.pt"  # Path to your YOLO model
+    model_path = "yolo11n.pt"  # Path ke YOLO model
     model = load_model(model_path)
 
-    # Langsung gunakan kamera dengan indeks 1
-    camera_index = 1  # Default kamera eksternal, indeks 1
+    # Pilih salah satu dari dua kamera yang tersedia
+    st.sidebar.markdown("### Pilih Kamera")
+    available_cameras = [0, 1]  # Daftar kamera yang tersedia (indeks)
+    selected_camera = st.sidebar.radio("Pilih Kamera", options=available_cameras, format_func=lambda x: f"Kamera {x}")
 
-    st.sidebar.write(f"Kamera yang digunakan: Kamera {camera_index}")
+    st.sidebar.write(f"Kamera yang digunakan: Kamera {selected_camera}")
 
-    # Checkbox untuk memulai deteksi (Diletakkan di atas informasi deteksi)
+    # Tombol start/stop
     run_detection = st.sidebar.checkbox("Start/Stop Object Detection", key="detection_control")
 
-    # Placeholder untuk informasi deteksi di sidebar
+    # Placeholder untuk tampilan kamera dan deteksi
+    st_frame = st.empty()
     st.sidebar.markdown("### Informasi Deteksi")
     detection_info_placeholder = st.sidebar.empty()
 
-    # Open video capture jika checkbox aktif
-    if run_detection:
-        cap = cv2.VideoCapture(camera_index)  # Gunakan kamera dengan indeks 1
-        st_frame = st.empty()  # Placeholder untuk video frames
+    # Variabel untuk melacak status lampu sebelumnya
+    previous_person_detected = False
 
+    if run_detection:
+        cap = cv2.VideoCapture(selected_camera)  # Gunakan kamera yang dipilih
+        
         while True:
             ret, frame = cap.read()
             if not ret:
-                st.warning("Failed to capture image. Pastikan kamera dengan indeks 1 terhubung.")
+                st.warning(f"Failed to capture image from Kamera {selected_camera}.")
                 break
-
-            # Run YOLO detection
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert ke RGB untuk display
-            results = model.predict(frame, imgsz=640)  # Lakukan deteksi
             
-            # Proses hasil deteksi
-            frame, detected_objects, person_detected = display_results(frame, results[0])
-
-            # Tampilkan video feed
+            # Deteksi YOLO
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = model.predict(frame_rgb, imgsz=320)  # Tetap gunakan ukuran gambar 640
+            frame, detected_objects, person_detected = detect_person(frame_rgb, results[0])
+            
+            # Tampilkan frame kamera
             st_frame.image(frame, channels="RGB", use_column_width=True)
             
-            # Update informasi deteksi di sidebar
+            # Update sidebar untuk informasi deteksi
             if detected_objects:
-                object_counts = Counter(detected_objects)
-                detection_info = "\n".join([f"{obj}: {count}" for obj, count in object_counts.items()])
+                detection_info = f"Person detected!" if person_detected else "No objects detected."
             else:
                 detection_info = "No objects detected."
+            detection_info_placeholder.text(detection_info)
 
-            detection_info_placeholder.text(detection_info)  # Tampilkan informasi deteksi di sidebar
-
-            # Kontrol lampu hanya jika "person" terdeteksi
-            if person_detected:
+            # Kontrol lampu tetap menggunakan logika awal
+            if person_detected and not previous_person_detected:
                 send_to_nodemcu("lampOn")  # Hidupkan lampu jika "person" terdeteksi
-            else:
-                send_to_nodemcu("lampOff")  # Matikan lampu jika "person" tidak terdeteksi
+            elif not person_detected and previous_person_detected:
+                send_to_nodemcu("lampOff")  # Matikan lampu jika "person" tidak lagi terdeteksi
 
-            # Break the loop jika checkbox dimatikan
+            # Update status sebelumnya
+            previous_person_detected = person_detected
+            
+            # Berhenti jika checkbox dimatikan
             if not st.session_state.detection_control:
-                send_to_nodemcu("lampOff")  # Matikan lampu saat deteksi berhenti
+                send_to_nodemcu("lampOff")
                 break
         
         cap.release()
