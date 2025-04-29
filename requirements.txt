@@ -2,3 +2,4 @@ ultralytics
 streamlit
 opencv-python
 numpy
+requests
