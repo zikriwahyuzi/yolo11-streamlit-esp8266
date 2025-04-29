@@ -1,29 +1,35 @@
-<<<<<<< HEAD
-# YOLOv11 Object Detection Streamlit App
-This repository contains a Streamlit web application for object detection using the YOLOv11n model. This application allows users to perform real-time object detection directly from their device's camera. Simply open the app and point your camera at the objects you want to detect to see instant results.
+# YOLO Object Detection with ESP8266 Integration
+**Overview**
+This repository contains a Streamlit-based Python application integrated with YOLOv11 for real-time object detection. The system utilizes the ESP8266 microcontroller for IoT actions, such as controlling devices based on object detection events. This project is tailored to detect "person" objects efficiently and manage actions like switching lights on and off.
 
-**Key features:**
-* **YOLOv11n:** Utilizes the state-of-the-art YOLOv11n model for accurate object detection.
-* **Streamlit:** Built with Streamlit for a user-friendly web interface.
-* **Simple Interface:** Intuitive design for easy use.
+**Features**
+* **YOLOv11 Object Detection:** Real-time detection of "person" objects with the YOLO model.
+* **Streamlit Interface:** Interactive UI for live camera feeds and detection results.
+* **ESP8266 Integration:** Direct interaction with IoT devices via HTTP requests to control external hardware.
+* **Customizable Camera Inputs:** Option to choose between two available cameras for object detection.
 
-**To run the app:**
+**Installation**
 1. **Clone repository:**
    ```bash
-   git clone https://github.com/zikriwahyuzi/yolo11-streamlit-beginer.git
+   git clone https://github.com/zikriwahyuzi/yolo11-streamlit-esp8266.git
+   cd test-yolo-esp
+
 2. **Install dependencies:**
+   Ensure you have Python installed, then run:
    ```bash
-   cd "your-repository"
-   
    pip install -r requirements.txt
-4. **Run the app:**
+
+3. **Run the app:**
+   Start the Streamlit app using:
    ```bash
-   streamlit run testyolo11.py
+   streamlit run testyolo_esp.py
    
+**Usage**
+a. Connect your ESP8266 to the same network as the system.
+b. Access the Streamlit application via localhost or deployed URL.
+c. Choose your preferred camera input in the sidebar.
+d. Monitor real-time detection results and control actions triggered by the ESP8266.
+
 **Note:**
-'Camera Permissions'
-You may need to grant camera permissions to the app when you run it for the first time.
-=======
-# yolo11-streamlit-esp8266
-yolo11-streamlit-esp8266
->>>>>>> 36c7869dc64023c09e7ce3756abc08ecd3eba45a
+*'Camera Permissions' You may need to grant camera permissions to the app when you run it for the first time.
+*Make sure the ESP8266 microcontroller is programmed to respond to HTTP requests sent by the system.
